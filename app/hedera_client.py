@@ -1,5 +1,5 @@
 import os
-from hedera import (
+from hashgraph_sdk import (
     Client,
     PrivateKey,
     TopicCreateTransaction,
@@ -27,7 +27,6 @@ try:
     client = Client.forTestnet()
     client.setOperator(operator_id, operator_key)
 except Exception as e:
-    # This will help debug if the environment variables are set incorrectly
     print(f"Error initializing Hedera client: {e}")
     client = None
 
@@ -36,7 +35,6 @@ async def create_audit_topic() -> str:
     if not client:
         raise Exception("Hedera client is not initialized. Check environment variables.")
 
-    # Create a new topic
     transaction = TopicCreateTransaction()
     tx_response = await transaction.execute(client)
     receipt = await tx_response.getReceipt(client)
@@ -48,7 +46,6 @@ async def submit_audit_log(topic_id: str, message: str):
     if not client:
         raise Exception("Hedera client is not initialized. Check environment variables.")
 
-    # Submit a message to the topic
     await TopicMessageSubmitTransaction(
         topicId=topic_id,
         message=bytes(message, 'utf-8')

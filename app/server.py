@@ -47,7 +47,9 @@ async def audit():
             "audit_trail_id": topic_id
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Log the full error to the console for debugging
+        print(f"An error occurred during audit: {e}")
+        return jsonify({"error": "An internal error occurred. Please check the server logs."}), 500
 
 @mcp_server.tool()
 async def auditContract(contract_address: str, contract_code: str):
