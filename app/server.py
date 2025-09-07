@@ -3,6 +3,8 @@ import os
 from flask import Flask, request, jsonify, render_template
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
+import json
+from datetime import datetime
 
 from app.hedera_client import create_audit_topic, submit_audit_log
 from app.comput3_client import analyze_contract
@@ -12,36 +14,40 @@ load_dotenv()
 app = Flask(__name__)
 mcp_server = FastMCP(app)
 
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/api/audit', methods=['POST'])
-async def api_audit():
-    contract_code = request.json.get('contract_code')
+@app.route("/api/audit", methods=["POST"])
+async def audit():
+    data = await request.get_json()
+    contract_code = data.get("contract_code")
+
     if not contract_code:
-        return jsonify({'error': 'No contract code provided'}), 400
+        return jsonify({"error": "No contract code provided"}), 400
 
-    # Create Hedera Topic
-    topic_id = await create_audit_topic()
-    if not topic_id:
-        return jsonify({'error': 'Failed to create Hedera topic'}), 500
+    try:
+        # 1. Create a new HCS topic for this audit
+        topic_id = await create_audit_topic()
 
-    # Log audit initiation
-    await submit_audit_log(topic_id, f'Audit initiated for contract: {contract_code[:100]}...')
+        # 2. Log the initial action
+        init_log = {"step": 1, "action": "AUDIT_INITIATED", "timestamp": datetime.utcnow().isoformat()}
+        await submit_audit_log(topic_id, json.dumps(init_log))
 
-    # Analyze contract with AI
-    ai_analysis_result = await analyze_contract(contract_code)
-    if not ai_analysis_result:
-        return jsonify({'error': 'AI analysis failed'}), 500
+        # 3. Perform AI analysis via Comput3.ai
+        analysis_result = await analyze_contract(contract_code)
 
-    # Log AI analysis result
-    await submit_audit_log(topic_id, f'AI analysis complete. Result: {ai_analysis_result[:100]}...')
+        # 4. Log the final result
+        final_log = {"step": 2, "action": "ANALYSIS_COMPLETE", "result": analysis_result, "timestamp": datetime.utcnow().isoformat()}
+        await submit_audit_log(topic_id, json.dumps(final_log))
 
-    return jsonify({
-        'ai_analysis': ai_analysis_result,
-        'hedera_topic_id': topic_id
-    })
+        # 5. Return a user-friendly summary
+        return jsonify({
+            "analysis": analysis_result,
+            "audit_trail_id": topic_id
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @mcp_server.tool()
 async def auditContract(contract_address: str, contract_code: str):
@@ -52,7 +58,7 @@ async def auditContract(contract_address: str, contract_code: str):
         return "Failed to create Hedera topic"
 
     # Log audit initiation
-    await submit_audit_log(topic_id, f'MCP Audit initiated for contract: {contract_address} - {contract_code[:100]}...')
+    await submit_audit_log(topic_id, f"MCP Audit initiated for contract: {contract_address} - {contract_code[:100]}...")
 
     # Analyze contract with AI
     ai_analysis_result = await analyze_contract(contract_code)
@@ -60,11 +66,11 @@ async def auditContract(contract_address: str, contract_code: str):
         return "AI analysis failed"
 
     # Log AI analysis result
-    await submit_audit_log(topic_id, f'MCP AI analysis complete. Result: {ai_analysis_result[:100]}...')
+    await submit_audit_log(topic_id, f"MCP AI analysis complete. Result: {ai_analysis_result[:100]}...")
 
     return f"Audit Summary: {ai_analysis_result}\nVerifiable Hedera Topic ID: {topic_id}"
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
 
 

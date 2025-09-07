@@ -2,5 +2,5 @@ Flask
 python-dotenv
 mcp[cli]
 httpx
-hedera-sdk-py
+hashgraph-sdk
 

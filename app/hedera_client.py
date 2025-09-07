@@ -1,40 +1,50 @@
 import os
-from dotenv import load_dotenv
-from hedera import (
+from hashgraph_sdk import (
     Client,
-    TopicCreateTransaction,
-    TopicMessageSubmitTransaction,
     PrivateKey,
-    AccountId
+    TopicCreateTransaction,
+    TopicMessageSubmitTransaction
 )
 
-load_dotenv()
+# Configure the client for Hedera Testnet
+try:
+    operator_id = os.getenv("HEDERA_ACCOUNT_ID")
+    operator_key_str = os.getenv("HEDERA_PRIVATE_KEY")
 
-HEDERA_ACCOUNT_ID = os.getenv("HEDERA_ACCOUNT_ID")
-HEDERA_PRIVATE_KEY = os.getenv("HEDERA_PRIVATE_KEY")
+    if not operator_id or not operator_key_str:
+        raise ValueError("HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY must be set in environment variables.")
 
-client = Client.forTestnet()
-client.setOperator(AccountId.fromString(HEDERA_ACCOUNT_ID), PrivateKey.fromString(HEDERA_PRIVATE_KEY))
+    # The private key might have a '0x' prefix, which the SDK doesn't expect.
+    if operator_key_str.startswith("0x"):
+        operator_key_str = operator_key_str[2:]
 
-async def create_audit_topic():
-    try:
-        transaction_response = await TopicCreateTransaction().execute(client)
-        receipt = await transaction_response.getReceipt(client)
-        topic_id = receipt.topicId
-        print(f"Topic created with ID: {topic_id}")
-        return str(topic_id)
-    except Exception as e:
-        print(f"Error creating topic: {e}")
-        return None
+    operator_key = PrivateKey.fromString(operator_key_str)
+
+    client = Client.forTestnet()
+    client.setOperator(operator_id, operator_key)
+except Exception as e:
+    # This will help debug if the environment variables are set incorrectly
+    print(f"Error initializing Hedera client: {e}")
+    client = None
+
+async def create_audit_topic() -> str:
+    """Creates a new HCS topic and returns the Topic ID as a string."""
+    if not client:
+        raise Exception("Hedera client is not initialized. Check environment variables.")
+
+    tx_response = await TopicCreateTransaction().execute(client)
+    receipt = await tx_response.getReceipt(client)
+    topic_id = receipt.topicId
+    return str(topic_id)
 
 async def submit_audit_log(topic_id: str, message: str):
-    try:
-        transaction_response = await TopicMessageSubmitTransaction().setTopicId(topic_id).setMessage(message.encode('utf-8')).execute(client)
-        receipt = await transaction_response.getReceipt(client)
-        print(f"Message submitted to topic {topic_id}. Status: {receipt.status}")
-        return True
-    except Exception as e:
-        print(f"Error submitting message: {e}")
-        return False
+    """Submits a message to a specific HCS topic."""
+    if not client:
+        raise Exception("Hedera client is not initialized. Check environment variables.")
+
+    await TopicMessageSubmitTransaction(
+        topicId=topic_id,
+        message=bytes(message, "utf-8")
+    ).execute(client)
 
 
