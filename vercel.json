@@ -10,6 +10,7 @@
       "src": "/(.*)",
       "dest": "app/server.py"
     }
-  ]
+  ],
+  "buildCommand": "sh build.sh"
 }
 
