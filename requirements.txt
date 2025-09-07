@@ -1,0 +1,6 @@
+Flask
+python-dotenv
+mcp[cli]
+httpx
+hashgraph-sdk
+

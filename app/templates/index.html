@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent HCS: Verifiable AI Auditor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans leading-normal tracking-normal">
+    <div class="container mx-auto p-8">
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold text-blue-400 mb-4">Agent HCS: Verifiable AI Auditor</h1>
+            <p class="text-xl text-gray-300">Empowering AI agents to conduct verifiable smart contract security audits on Hedera.</p>
+        </header>
+
+        <main class="bg-gray-800 p-8 rounded-lg shadow-lg mb-12">
+            <section class="mb-8">
+                <h2 class="text-3xl font-semibold text-gray-200 mb-4">Audit Your Smart Contract</h2>
+                <p class="text-gray-400 mb-6">Paste your Solidity smart contract code below to get an AI-powered security audit with an immutable audit trail on the Hedera Consensus Service.</p>
+                <textarea id="contractCode" class="w-full p-4 bg-gray-700 border border-gray-600 rounded-md text-gray-50 font-mono text-lg focus:outline-none focus:border-blue-500" rows="15" placeholder="// Paste your Solidity smart contract code here..."></textarea>
+            </section>
+
+            <div class="text-center mb-8">
+                <button id="auditButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-xl transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50">
+                    Audit Contract
+                </button>
+                <div id="loadingSpinner" class="hidden mt-4">
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-12 w-12"></div>
+                </div>
+            </div>
+
+            <section id="resultsSection" class="hidden bg-gray-700 p-6 rounded-lg shadow-inner">
+                <h2 class="text-3xl font-semibold text-gray-200 mb-4">Audit Results</h2>
+                <div class="mb-6">
+                    <h3 class="text-2xl font-medium text-gray-300 mb-2">AI Analysis:</h3>
+                    <pre id="aiAnalysis" class="bg-gray-800 p-4 rounded-md text-gray-50 font-mono whitespace-pre-wrap"></pre>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-medium text-gray-300 mb-2">Verifiable Hedera Audit Trail ID:</h3>
+                    <p id="hederaTopicId" class="text-blue-400 text-lg break-all"></p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center text-gray-500 text-sm mt-12">
+            <p>&copy; 2025 Agent HCS. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const auditButton = document.getElementById("auditButton");
+            const contractCodeTextarea = document.getElementById("contractCode");
+            const loadingSpinner = document.getElementById("loadingSpinner");
+            const resultsSection = document.getElementById("resultsSection");
+            const aiAnalysisPre = document.getElementById("aiAnalysis");
+            const hederaTopicIdP = document.getElementById("hederaTopicId");
+
+            auditButton.addEventListener("click", async () => {
+                const contractCode = contractCodeTextarea.value;
+                if (!contractCode) {
+                    alert("Please enter smart contract code to audit.");
+                    return;
+                }
+
+                loadingSpinner.classList.remove("hidden");
+                resultsSection.classList.add("hidden");
+
+                try {
+                    const response = await fetch("/api/audit", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ contract_code: contractCode }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || "Something went wrong");
+                    }
+
+                    const data = await response.json();
+                    aiAnalysisPre.textContent = data.ai_analysis;
+                    hederaTopicIdP.innerHTML = `<a href="https://hashscan.io/testnet/topic/${data.hedera_topic_id}" target="_blank" class="hover:underline">${data.hedera_topic_id}</a>`;
+                    resultsSection.classList.remove("hidden");
+                } catch (error) {
+                    console.error("Audit failed:", error);
+                    alert(`Audit failed: ${error.message}`);
+                } finally {
+                    loadingSpinner.classList.add("hidden");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
