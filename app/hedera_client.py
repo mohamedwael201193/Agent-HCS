@@ -31,7 +31,7 @@ async def submit_audit_log(topic_id: str, message: str):
     try:
         transaction_response = await TopicMessageSubmitTransaction()
         .setTopicId(topic_id)
-        .setMessage(message.encode('utf-8'))
+        .setMessage(message.encode(\'utf-8\'))
         .execute(client)
         receipt = await transaction_response.getReceipt(client)
         print(f"Message submitted to topic {topic_id}. Status: {receipt.status}")
