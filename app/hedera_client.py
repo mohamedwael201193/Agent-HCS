@@ -1,5 +1,6 @@
 import os
-from hashgraph_sdk import (
+import asyncio
+from hedera import (
     Client,
     PrivateKey,
     TopicCreateTransaction,
@@ -21,7 +22,7 @@ try:
     # The private key might have a '0x' prefix, which the SDK doesn't expect.
     if operator_key_str.startswith('0x'):
         operator_key_str = operator_key_str[2:]
-
+    
     operator_key = PrivateKey.fromString(operator_key_str)
 
     client = Client.forTestnet()
@@ -30,7 +31,7 @@ except Exception as e:
     print(f"Error initializing Hedera client: {e}")
     client = None
 
-async def create_audit_topic() -> str:
+async def create_audit_topic_async() -> str:
     """Creates a new HCS topic and returns the Topic ID as a string."""
     if not client:
         raise Exception("Hedera client is not initialized. Check environment variables.")
@@ -39,9 +40,10 @@ async def create_audit_topic() -> str:
     tx_response = await transaction.execute(client)
     receipt = await tx_response.getReceipt(client)
     topic_id = receipt.topicId
+    await client.close()
     return str(topic_id)
 
-async def submit_audit_log(topic_id: str, message: str):
+async def submit_audit_log_async(topic_id: str, message: str):
     """Submits a message to a specific HCS topic."""
     if not client:
         raise Exception("Hedera client is not initialized. Check environment variables.")
@@ -50,5 +52,13 @@ async def submit_audit_log(topic_id: str, message: str):
         topicId=topic_id,
         message=bytes(message, 'utf-8')
     ).execute(client)
+    await client.close()
+
+# Synchronous wrappers for Flask
+def create_audit_topic():
+    return asyncio.run(create_audit_topic_async())
+
+def submit_audit_log(topic_id: str, message: str):
+    return asyncio.run(submit_audit_log_async(topic_id, message))
 
 

@@ -19,27 +19,28 @@ def index():
     return render_template("index.html")
 
 @app.route("/api/audit", methods=["POST"])
-async def audit():
-    data = await request.get_json()
+def audit():
+    data = request.get_json()
     contract_code = data.get("contract_code")
 
     if not contract_code:
         return jsonify({"error": "No contract code provided"}), 400
 
     try:
-        # 1. Create a new HCS topic for this audit
-        topic_id = await create_audit_topic()
+        # 1. Create a new HCS topic for this audit (using the synchronous wrapper)
+        topic_id = create_audit_topic()
 
         # 2. Log the initial action
         init_log = {"step": 1, "action": "AUDIT_INITIATED", "timestamp": datetime.utcnow().isoformat()}
-        await submit_audit_log(topic_id, json.dumps(init_log))
+        submit_audit_log(topic_id, json.dumps(init_log))
 
-        # 3. Perform AI analysis via Comput3.ai
-        analysis_result = await analyze_contract(contract_code)
+        # 3. Perform AI analysis via Comput3.ai (assuming analyze_contract is synchronous)
+        # If analyze_contract is async, it also needs a sync wrapper like the hedera functions.
+        analysis_result = analyze_contract(contract_code) 
 
         # 4. Log the final result
         final_log = {"step": 2, "action": "ANALYSIS_COMPLETE", "result": analysis_result, "timestamp": datetime.utcnow().isoformat()}
-        await submit_audit_log(topic_id, json.dumps(final_log))
+        submit_audit_log(topic_id, json.dumps(final_log))
 
         # 5. Return a user-friendly summary
         return jsonify({
@@ -47,7 +48,6 @@ async def audit():
             "audit_trail_id": topic_id
         })
     except Exception as e:
-        # Log the full error to the console for debugging
         print(f"An error occurred during audit: {e}")
         return jsonify({"error": "An internal error occurred. Please check the server logs."}), 500
 
@@ -55,7 +55,7 @@ async def audit():
 async def auditContract(contract_address: str, contract_code: str):
     # This logic is identical to the /api/audit endpoint
     # Create Hedera Topic
-    topic_id = await create_audit_topic()
+    topic_id = create_audit_topic()
     if not topic_id:
         return "Failed to create Hedera topic"
 
