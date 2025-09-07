@@ -1,21 +1,25 @@
 import os
-from hashgraph_sdk import (
+from hedera import (
     Client,
     PrivateKey,
     TopicCreateTransaction,
-    TopicMessageSubmitTransaction
+    TopicMessageSubmitTransaction,
+    AccountId
 )
 
 # Configure the client for Hedera Testnet
+client = None
 try:
-    operator_id = os.getenv("HEDERA_ACCOUNT_ID")
+    operator_id_str = os.getenv("HEDERA_ACCOUNT_ID")
     operator_key_str = os.getenv("HEDERA_PRIVATE_KEY")
 
-    if not operator_id or not operator_key_str:
+    if not operator_id_str or not operator_key_str:
         raise ValueError("HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY must be set in environment variables.")
 
+    operator_id = AccountId.fromString(operator_id_str)
+
     # The private key might have a '0x' prefix, which the SDK doesn't expect.
-    if operator_key_str.startswith("0x"):
+    if operator_key_str.startswith('0x'):
         operator_key_str = operator_key_str[2:]
 
     operator_key = PrivateKey.fromString(operator_key_str)
@@ -32,7 +36,9 @@ async def create_audit_topic() -> str:
     if not client:
         raise Exception("Hedera client is not initialized. Check environment variables.")
 
-    tx_response = await TopicCreateTransaction().execute(client)
+    # Create a new topic
+    transaction = TopicCreateTransaction()
+    tx_response = await transaction.execute(client)
     receipt = await tx_response.getReceipt(client)
     topic_id = receipt.topicId
     return str(topic_id)
@@ -42,9 +48,10 @@ async def submit_audit_log(topic_id: str, message: str):
     if not client:
         raise Exception("Hedera client is not initialized. Check environment variables.")
 
+    # Submit a message to the topic
     await TopicMessageSubmitTransaction(
         topicId=topic_id,
-        message=bytes(message, "utf-8")
+        message=bytes(message, 'utf-8')
     ).execute(client)
 
 
